@@ -45,7 +45,7 @@
   <h3>製造部屋</h3>
   <div id="cookieBtn">🍪</div>
   <button onclick="buyMakeRobot()">製造ロボット購入（100000円）</button>
-  <button onclick="levelUpMakeRobot()">レベルアップ（11000円）</button>
+  <button onclick="levelUpMakeRobot()">レベルアップ（100000円）</button>
   <p>製造ロボット：<span id="makeRobots">0</span> / レベル：<span id="makeLevel">1</span></p>
   <div id="makeRobotView"></div>
 </div>
@@ -95,6 +95,9 @@
   const sellRobotsEl=document.getElementById("sellRobots");
   const makeLevelEl=document.getElementById("makeLevel");
   const requestEl=document.getElementById("requestCount");
+  const makeRobotView=document.getElementById("makeRobotView");
+  const sellRobotView=document.getElementById("sellRobotView");
+  const robotWorkView=document.getElementById("robotWorkView");
 
   nameInput.addEventListener("input",()=>{playerName=nameInput.value;autoSave();});
 
@@ -105,6 +108,7 @@
     sellRobotsEl.textContent=sellRobots;
     makeLevelEl.textContent=makeLevel;
     requestEl.textContent=requestCount;
+    renderRobots();
   }
 
   function showRoom(id){
@@ -128,8 +132,8 @@
   }
 
   function levelUpMakeRobot(){
-    if(makeLevel<10 && money>=11000){
-      money-=11000;
+    if(makeLevel<10 && money>=100000){
+      money-=100000;
       makeLevel++;
       update();
       autoSave();
@@ -144,6 +148,29 @@
       autoSave();
     }
   }
+
+  function renderRobots(){
+    makeRobotView.innerHTML="";
+    for(let i=0;i<makeRobots;i++)makeRobotView.innerHTML+="<div class='robot'>🤖🍪</div>";
+    sellRobotView.innerHTML="";
+    for(let i=0;i<sellRobots;i++)sellRobotView.innerHTML+="<div class='robot'>🤖💰</div>";
+    robotWorkView.innerHTML="<p>製造ロボット："+makeRobots+"体（Lv"+makeLevel+"）</p><p>販売ロボット："+sellRobots+"体</p>";
+  }
+
+  setInterval(()=>{
+    if(makeRobots>0){
+      const speed=makeLevel;
+      cookies+=makeRobots*speed;
+      update();
+      autoSave();
+    }
+    if(sellRobots>0){
+      const earn=10;
+      money+=sellRobots*earn;
+      update();
+      autoSave();
+    }
+  },1000);
 
   function newRequest(){
     requestCount=Math.floor(Math.random()*(1000-10+1))+10;
