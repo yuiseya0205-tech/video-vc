@@ -11,9 +11,6 @@
   .room{display:none;margin-top:20px;padding:20px;background:#fff;border-radius:12px;width:min(90%,900px);margin-left:auto;margin-right:auto;}
   #cookieBtn{font-size:clamp(60px,12vw,120px);cursor:pointer;}
   .robot{font-size:clamp(40px,8vw,70px);margin:10px;}
-  .customer{font-size:clamp(24px,5vw,40px);margin:10px;}
-  #rankTable{width:100%;border-collapse:collapse;margin-top:10px;font-size:clamp(12px,2vw,18px);}
-  #rankTable th,#rankTable td{border:1px solid #ccc;padding:4px;}
 </style>
 </head>
 <body>
@@ -28,7 +25,6 @@
   <button onclick="showRoom('robotRoom')">ロボット部屋</button>
   <button onclick="showRoom('outsideRoom')">外の様子</button>
   <button onclick="showRoom('receptionRoom')">受付</button>
-  <button onclick="showRoom('rankRoom')">ランキング</button>
 </div>
 
 <p>クッキー：<span id="cookies">0</span></p>
@@ -75,20 +71,7 @@
   <p>1枚150円</p>
 </div>
 
-<div id="rankRoom" class="room">
-  <h3>オンラインランキング</h3>
-  <table id="rankTable">
-    <thead>
-      <tr><th>順位</th><th>名前</th><th>クッキー</th><th>お金</th></tr>
-    </thead>
-    <tbody id="rankBody"></tbody>
-  </table>
-</div>
-
 <script>
-  const JSONBIN_URL="https://api.jsonbin.io/v3/b/あなたのBinID";
-  const JSONBIN_KEY="$2b$10$あなたのAPIキー";
-
   let playerName="";
   let cookies=0;
   let money=0;
@@ -104,9 +87,8 @@
   const sellRobotsEl=document.getElementById("sellRobots");
   const makeLevelEl=document.getElementById("makeLevel");
   const requestEl=document.getElementById("requestCount");
-  const rankBody=document.getElementById("rankBody");
 
-  nameInput.addEventListener("input",()=>{playerName=nameInput.value;autoSave();pushRanking();});
+  nameInput.addEventListener("input",()=>{playerName=nameInput.value;autoSave();});
 
   function update(){
     cookiesEl.textContent=Math.floor(cookies);
@@ -126,7 +108,6 @@
     cookies++;
     update();
     autoSave();
-    pushRanking();
   };
 
   function buyMakeRobot(){
@@ -135,7 +116,6 @@
       makeRobots++;
       update();
       autoSave();
-      pushRanking();
     }
   }
 
@@ -145,7 +125,6 @@
       makeLevel++;
       update();
       autoSave();
-      pushRanking();
     }
   }
 
@@ -155,7 +134,6 @@
       sellRobots++;
       update();
       autoSave();
-      pushRanking();
     }
   }
 
@@ -177,7 +155,6 @@
     requestCount=0;
     update();
     autoSave();
-    pushRanking();
   }
 
   function denyRequest(){
@@ -187,7 +164,6 @@
     requestCount=0;
     update();
     autoSave();
-    pushRanking();
   }
 
   function saveGame(){
@@ -214,48 +190,11 @@
     update();
   }
 
-  async function pushRanking(){
-    if(!playerName)return;
-    const record={name:playerName,cookies:Math.floor(cookies),money:Math.floor(money)};
-    try{
-      const res=await fetch(JSONBIN_URL,{method:"GET",headers:{"X-Master-Key":JSONBIN_KEY}});
-      let data=[];
-      if(res.ok){
-        const json=await res.json();
-        data=json.record||[];
-      }
-      data=data.filter(r=>r.name!==playerName);
-      data.push(record);
-      data.sort((a,b)=>b.money-a.money||b.cookies-a.cookies);
-      await fetch(JSONBIN_URL,{
-        method:"PUT",
-        headers:{"Content-Type":"application/json","X-Master-Key":JSONBIN_KEY},
-        body:JSON.stringify(data)
-      });
-      loadRanking();
-    }catch(e){}
-  }
-
-  async function loadRanking(){
-    try{
-      const res=await fetch(JSONBIN_URL,{method:"GET",headers:{"X-Master-Key":JSONBIN_KEY}});
-      if(!res.ok)return;
-      const json=await res.json();
-      const data=json.record||[];
-      rankBody.innerHTML="";
-      data.forEach((r,i)=>{
-        rankBody.innerHTML+=`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.cookies}</td><td>${r.money}</td></tr>`;
-      });
-    }catch(e){}
-  }
-
-  window.addEventListener("beforeunload",()=>{autoSave();pushRanking();});
+  window.addEventListener("beforeunload",()=>{autoSave();});
 
   loadGame();
   update();
   showRoom("makeRoom");
-  loadRanking();
-  setInterval(pushRanking,15000);
 </script>
 
 </body>
