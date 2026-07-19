@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>クッキー工場ゲーム</title>
+<style>
+  body{text-align:center;font-family:sans-serif;background:#f7e9c8;}
+  #menu button,#saveBtn,#loadBtn{padding:10px 20px;margin:5px;background:#ffb347;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;}
+  #menu button:hover,#saveBtn:hover,#loadBtn:hover{background:#ff9a00;}
+  .room{display:none;margin-top:20px;padding:20px;background:#fff;border-radius:12px;width:80%;margin-left:auto;margin-right:auto;}
+  #cookieBtn{font-size:100px;cursor:pointer;}
+  #cookieBtn:active{transform:scale(0.9);}
+  .robot{font-size:60px;margin:10px;}
+  .customer{font-size:40px;margin:10px;}
+  #yesBtn,#noBtn{padding:10px 20px;margin:5px;background:#4caf50;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;}
+  #noBtn{background:#f44336;}
+</style>
+</head>
+<body>
+
+<h2>クッキー工場ゲーム</h2>
+
+<div id="menu">
+  <button onclick="showRoom('makeRoom')">製造部屋</button>
+  <button onclick="showRoom('sellRoom')">販売部屋</button>
+  <button onclick="showRoom('robotRoom')">ロボット部屋</button>
+  <button onclick="showRoom('outsideRoom')">外の様子</button>
+  <button onclick="showRoom('receptionRoom')">受付</button>
+</div>
+
+<p>クッキー：<span id="cookies">0</span></p>
+<p>お金：<span id="money">0</span> 円</p>
+
+<button id="saveBtn" onclick="saveGame()">セーブ</button>
+<button id="loadBtn" onclick="loadGame()">ロード</button>
+
+<div id="makeRoom" class="room">
+  <h3>製造部屋</h3>
+  <div id="cookieBtn">🍪</div>
+  <button onclick="buyMakeRobot()">製造ロボット購入（100000円）</button>
+  <p>製造ロボット：<span id="makeRobots">0</span></p>
+  <div id="makeRobotView"></div>
+</div>
+
+<div id="sellRoom" class="room">
+  <h3>販売部屋</h3>
+  <div id="sellCustomer"></div>
+  <div id="sellButtons"></div>
+  <button onclick="buySellRobot()">販売ロボット購入（100000円）</button>
+  <p>販売ロボット：<span id="sellRobots">0</span></p>
+  <div id="sellRobotView"></div>
+</div>
+
+<div id="robotRoom" class="room">
+  <h3>ロボット部屋</h3>
+  <div id="robotWorkView"></div>
+</div>
+
+<div id="outsideRoom" class="room">
+  <h3>外の様子</h3>
+  <p>🌤️</p>
+  <p>🚚</p>
+</div>
+
+<div id="receptionRoom" class="room">
+  <h3>受付</h3>
+  <p>客の注文枚数：<span id="requestCount">0</span> 枚</p>
+  <button onclick="newRequest()">新しい客</button>
+  <button onclick="acceptRequest()">渡す</button>
+  <button onclick="denyRequest()">無理</button>
+  <p>1枚150円</p>
+</div>
+
+<script>
+  let cookies=0;
+  let money=0;
+  let makeRobots=0;
+  let sellRobots=0;
+  let requestCount=0;
+  let currentSellRequest=0;
+  let customerTimer=null;
+  const pricePerCookie=150;
+
+  const cookiesEl=document.getElementById("cookies");
+  const moneyEl=document.getElementById("money");
+  const makeRobotsEl=document.getElementById("makeRobots");
+  const sellRobotsEl=document.getElementById("sellRobots");
+  const requestEl=document.getElementById("requestCount");
+  const sellCustomer=document.getElementById("sellCustomer");
+  const sellButtons=document.getElementById("sellButtons");
+
+  function update(){
+    cookiesEl.textContent=cookies;
+    moneyEl.textContent=money;
+    makeRobotsEl.textContent=makeRobots;
+    sellRobotsEl.textContent=sellRobots;
+    requestEl.textContent=requestCount;
+  }
+
+  function showRoom(id){
+    document.querySelectorAll(".room").forEach(r=>r.style.display="none");
+    document.getElementById(id).style.display="block";
+  }
+
+  document.getElementById("cookieBtn").onclick=()=>{
+    cookies++;
+    update();
+  };
+
+  function buyMakeRobot(){
+    if(money>=100000){
+      money-=100000;
+      makeRobots++;
+      update();
+      renderMakeRobots();
+    }
+  }
+
+  function buySellRobot(){
+    if(money>=100000){
+      money-=100000;
+      sellRobots++;
+      update();
+      renderSellRobots();
+    }
+  }
+
+  function renderMakeRobots(){
+    const v=document.getElementById("makeRobotView");
+    v.innerHTML="";
+    for(let i=0;i<makeRobots;i++)v.innerHTML+="<div class='robot'>🤖🍪</div>";
+  }
+
+  function renderSellRobots(){
+    const v=document.getElementById("sellRobotView");
+    v.innerHTML="";
+    for(let i=0;i<sellRobots;i++)v.innerHTML+="<div class='robot'>🤖💰</div>";
+  }
+
+  function renderRobotWork(){
+    const v=document.getElementById("robotWorkView");
+    v.innerHTML="<p>製造ロボット："+makeRobots+"体</p><p>販売ロボット："+sellRobots+"体</p>";
+  }
+
+  function offlineWork(){
+    const last=localStorage.getItem("lastTime");
+    if(!last)return;
+    const now=Date.now();
+    const diff=Math.floor((now-last)/1000);
+    if(diff>0){
+      cookies+=makeRobots*diff;
+      money+=sellRobots*diff*pricePerCookie;
+    }
+  }
+
+  setInterval(()=>{
+    if(makeRobots>0){
+      cookies+=makeRobots;
+      update();
+      renderRobotWork();
+    }
+  },1000);
+
+  function newRequest(){
+    requestCount=Math.floor(Math.random()*(1000-10+1))+10;
+    update();
+  }
+
+  function acceptRequest(){
+    if(requestCount<=0)return;
+    if(cookies>=requestCount){
+      cookies-=requestCount;
+      money+=requestCount*pricePerCookie;
+      requestCount=0;
+      update();
+    }else{
+      cookies=0;
+      money=0;
+      requestCount=0;
+      update();
+    }
+  }
+
+  function denyRequest(){
+    if(requestCount<=0)return;
+    cookies=Math.max(0,cookies-Math.floor(requestCount/2));
+    money=Math.max(0,money-requestCount*10);
+    requestCount=0;
+    update();
+  }
+
+  function saveGame(){
+    const d={cookies,money,makeRobots,sellRobots};
+    localStorage.setItem("cookieFactorySave",JSON.stringify(d));
+    localStorage.setItem("lastTime",Date.now());
+  }
+
+  function loadGame(){
+    const d=localStorage.getItem("cookieFactorySave");
+    if(!d)return;
+    const o=JSON.parse(d);
+    cookies=o.cookies||0;
+    money=o.money||0;
+    makeRobots=o.makeRobots||0;
+    sellRobots=o.sellRobots||0;
+    offlineWork();
+    update();
+    renderMakeRobots();
+    renderSellRobots();
+    renderRobotWork();
+  }
+
+  setInterval(()=>{
+    if(cookies>=10&&Math.random()<0.2){
+      currentSellRequest=Math.floor(Math.random()*(200-10+1))+10;
+      sellCustomer.innerHTML="<div class='customer'>🧍 クッキー"+currentSellRequest+"枚ください</div>";
+      sellButtons.innerHTML="<button id='yesBtn' onclick='sellYes()'>YES</button><button id='noBtn' onclick='sellNo()'>NO</button>";
+      if(customerTimer)clearTimeout(customerTimer);
+      customerTimer=setTimeout(()=>{
+        sellCustomer.innerHTML="";
+        sellButtons.innerHTML="";
+      },5000);
+    }
+  },3000);
+
+  function sellYes(){
+    if(cookies>=currentSellRequest){
+      cookies-=currentSellRequest;
+      money+=currentSellRequest*pricePerCookie;
+      sellCustomer.innerHTML="";
+      sellButtons.innerHTML="";
+      update();
+    }else{
+      const r=Math.random();
+      if(r<0.3){
+        alert("怒られてゲームオーバー");
+        cookies=0;
+        money=0;
+      }else{
+        alert("いいよいいよ、また来るね");
+      }
+      sellCustomer.innerHTML="";
+      sellButtons.innerHTML="";
+      update();
+    }
+  }
+
+  function sellNo(){
+    const r=Math.random();
+    if(r<0.1){
+      money=0;
+      alert("お金全部取られた");
+    }else{
+      alert("またこんど来るね");
+    }
+    sellCustomer.innerHTML="";
+    sellButtons.innerHTML="";
+    update();
+  }
+
+  loadGame();
+  update();
+  showRoom("makeRoom");
+</script>
+
+</body>
+</html>
