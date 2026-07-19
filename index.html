@@ -10,11 +10,8 @@
   #menu button:hover,#saveBtn:hover,#loadBtn:hover{background:#ff9a00;}
   .room{display:none;margin-top:20px;padding:20px;background:#fff;border-radius:12px;width:min(90%,900px);margin-left:auto;margin-right:auto;}
   #cookieBtn{font-size:clamp(60px,12vw,120px);cursor:pointer;}
-  #cookieBtn:active{transform:none;}
   .robot{font-size:clamp(40px,8vw,70px);margin:10px;}
   .customer{font-size:clamp(24px,5vw,40px);margin:10px;}
-  #yesBtn,#noBtn{padding:clamp(8px,1.5vw,16px) clamp(12px,2vw,24px);margin:5px;background:#4caf50;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;font-size:clamp(12px,2vw,20px);}
-  #noBtn{background:#f44336;}
   #rankTable{width:100%;border-collapse:collapse;margin-top:10px;font-size:clamp(12px,2vw,18px);}
   #rankTable th,#rankTable td{border:1px solid #ccc;padding:4px;}
 </style>
@@ -23,7 +20,7 @@
 
 <h2>クッキー工場ゲーム</h2>
 
-<p>プレイヤー名：<input id="playerName" type="text" placeholder="名前を入力"></p>
+<p>プレイヤー名：<input id="playerName" type="text"></p>
 
 <div id="menu">
   <button onclick="showRoom('makeRoom')">製造部屋</button>
@@ -99,9 +96,6 @@
   let sellRobots=0;
   let makeLevel=1;
   let requestCount=0;
-  let currentSellRequest=0;
-  let customerTimer=null;
-  const pricePerCookie=150;
 
   const nameInput=document.getElementById("playerName");
   const cookiesEl=document.getElementById("cookies");
@@ -110,11 +104,9 @@
   const sellRobotsEl=document.getElementById("sellRobots");
   const makeLevelEl=document.getElementById("makeLevel");
   const requestEl=document.getElementById("requestCount");
-  const sellCustomer=document.getElementById("sellCustomer");
-  const sellButtons=document.getElementById("sellButtons");
   const rankBody=document.getElementById("rankBody");
 
-  nameInput.addEventListener("input",()=>{playerName=nameInput.value;autoSave();});
+  nameInput.addEventListener("input",()=>{playerName=nameInput.value;autoSave();pushRanking();});
 
   function update(){
     cookiesEl.textContent=Math.floor(cookies);
@@ -134,6 +126,7 @@
     cookies++;
     update();
     autoSave();
+    pushRanking();
   };
 
   function buyMakeRobot(){
@@ -141,8 +134,8 @@
       money-=100000;
       makeRobots++;
       update();
-      renderMakeRobots();
       autoSave();
+      pushRanking();
     }
   }
 
@@ -152,6 +145,7 @@
       makeLevel++;
       update();
       autoSave();
+      pushRanking();
     }
   }
 
@@ -160,49 +154,10 @@
       money-=100000;
       sellRobots++;
       update();
-      renderSellRobots();
       autoSave();
+      pushRanking();
     }
   }
-
-  function renderMakeRobots(){
-    const v=document.getElementById("makeRobotView");
-    v.innerHTML="";
-    for(let i=0;i<makeRobots;i++)v.innerHTML+="<div class='robot'>🤖🍪</div>";
-  }
-
-  function renderSellRobots(){
-    const v=document.getElementById("sellRobotView");
-    v.innerHTML="";
-    for(let i=0;i<sellRobots;i++)v.innerHTML+="<div class='robot'>🤖💰</div>";
-  }
-
-  function renderRobotWork(){
-    const v=document.getElementById("robotWorkView");
-    v.innerHTML="<p>製造ロボット："+makeRobots+"体（Lv"+makeLevel+"）</p><p>販売ロボット："+sellRobots+"体</p>";
-  }
-
-  function offlineWork(){
-    const last=localStorage.getItem("lastTime");
-    if(!last)return;
-    const now=Date.now();
-    const diff=Math.floor((now-last)/100);
-    if(diff>0){
-      const speed=makeLevel===10?0.1:1/makeLevel;
-      cookies+=makeRobots*diff*speed;
-      money+=sellRobots*diff*(pricePerCookie/10);
-    }
-  }
-
-  setInterval(()=>{
-    if(makeRobots>0){
-      const speed=makeLevel===10?0.1:1/makeLevel;
-      cookies+=makeRobots*speed;
-      update();
-      renderRobotWork();
-      autoSave();
-    }
-  },100);
 
   function newRequest(){
     requestCount=Math.floor(Math.random()*(1000-10+1))+10;
@@ -214,17 +169,15 @@
     if(requestCount<=0)return;
     if(cookies>=requestCount){
       cookies-=requestCount;
-      money+=requestCount*pricePerCookie;
-      requestCount=0;
-      update();
-      autoSave();
+      money+=requestCount*150;
     }else{
       cookies=0;
       money=0;
-      requestCount=0;
-      update();
-      autoSave();
     }
+    requestCount=0;
+    update();
+    autoSave();
+    pushRanking();
   }
 
   function denyRequest(){
@@ -234,6 +187,7 @@
     requestCount=0;
     update();
     autoSave();
+    pushRanking();
   }
 
   function saveGame(){
@@ -257,21 +211,14 @@
     sellRobots=o.sellRobots||0;
     makeLevel=o.makeLevel||1;
     nameInput.value=playerName;
-    offlineWork();
     update();
-    renderMakeRobots();
-    renderSellRobots();
-    renderRobotWork();
   }
 
   async function pushRanking(){
     if(!playerName)return;
     const record={name:playerName,cookies:Math.floor(cookies),money:Math.floor(money)};
     try{
-      const res=await fetch(JSONBIN_URL,{
-        method:"GET",
-        headers:{"X-Master-Key":JSONBIN_KEY}
-      });
+      const res=await fetch(JSONBIN_URL,{method:"GET",headers:{"X-Master-Key":JSONBIN_KEY}});
       let data=[];
       if(res.ok){
         const json=await res.json();
@@ -279,16 +226,10 @@
       }
       data=data.filter(r=>r.name!==playerName);
       data.push(record);
-      data.sort((a,b)=>{
-        if(b.money!==a.money)return b.money-a.money;
-        return b.cookies-a.cookies;
-      });
+      data.sort((a,b)=>b.money-a.money||b.cookies-a.cookies);
       await fetch(JSONBIN_URL,{
         method:"PUT",
-        headers:{
-          "Content-Type":"application/json",
-          "X-Master-Key":JSONBIN_KEY
-        },
+        headers:{"Content-Type":"application/json","X-Master-Key":JSONBIN_KEY},
         body:JSON.stringify(data)
       });
       loadRanking();
@@ -297,10 +238,7 @@
 
   async function loadRanking(){
     try{
-      const res=await fetch(JSONBIN_URL,{
-        method:"GET",
-        headers:{"X-Master-Key":JSONBIN_KEY}
-      });
+      const res=await fetch(JSONBIN_URL,{method:"GET",headers:{"X-Master-Key":JSONBIN_KEY}});
       if(!res.ok)return;
       const json=await res.json();
       const data=json.record||[];
@@ -317,7 +255,7 @@
   update();
   showRoom("makeRoom");
   loadRanking();
-  setInterval(pushRanking,30000);
+  setInterval(pushRanking,15000);
 </script>
 
 </body>
