@@ -80,8 +80,6 @@
 
 <div id="rankRoom" class="room">
   <h3>オンラインランキング</h3>
-  <button onclick="pushRanking()">ランキング送信</button>
-  <button onclick="loadRanking()">ランキング更新</button>
   <table id="rankTable">
     <thead>
       <tr><th>順位</th><th>名前</th><th>クッキー</th><th>お金</th></tr>
@@ -279,6 +277,7 @@
         const json=await res.json();
         data=json.record||[];
       }
+      data=data.filter(r=>r.name!==playerName);
       data.push(record);
       data.sort((a,b)=>{
         if(b.money!==a.money)return b.money-a.money;
@@ -312,11 +311,13 @@
     }catch(e){}
   }
 
-  window.addEventListener("beforeunload",()=>{autoSave();});
+  window.addEventListener("beforeunload",()=>{autoSave();pushRanking();});
 
   loadGame();
   update();
   showRoom("makeRoom");
+  loadRanking();
+  setInterval(pushRanking,30000);
 </script>
 
 </body>
