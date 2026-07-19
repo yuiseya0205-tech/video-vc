@@ -15,11 +15,15 @@
   .customer{font-size:clamp(24px,5vw,40px);margin:10px;}
   #yesBtn,#noBtn{padding:clamp(8px,1.5vw,16px) clamp(12px,2vw,24px);margin:5px;background:#4caf50;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;font-size:clamp(12px,2vw,20px);}
   #noBtn{background:#f44336;}
+  #rankTable{width:100%;border-collapse:collapse;margin-top:10px;font-size:clamp(12px,2vw,18px);}
+  #rankTable th,#rankTable td{border:1px solid #ccc;padding:4px;}
 </style>
 </head>
 <body>
 
 <h2>クッキー工場ゲーム</h2>
+
+<p>プレイヤー名：<input id="playerName" type="text" placeholder="名前を入力"></p>
 
 <div id="menu">
   <button onclick="showRoom('makeRoom')">製造部屋</button>
@@ -27,6 +31,7 @@
   <button onclick="showRoom('robotRoom')">ロボット部屋</button>
   <button onclick="showRoom('outsideRoom')">外の様子</button>
   <button onclick="showRoom('receptionRoom')">受付</button>
+  <button onclick="showRoom('rankRoom')">ランキング</button>
 </div>
 
 <p>クッキー：<span id="cookies">0</span></p>
@@ -39,7 +44,8 @@
   <h3>製造部屋</h3>
   <div id="cookieBtn">🍪</div>
   <button onclick="buyMakeRobot()">製造ロボット購入（100000円）</button>
-  <p>製造ロボット：<span id="makeRobots">0</span></p>
+  <button onclick="levelUpMakeRobot()">レベルアップ（11000円）</button>
+  <p>製造ロボット：<span id="makeRobots">0</span> / レベル：<span id="makeLevel">1</span></p>
   <div id="makeRobotView"></div>
 </div>
 
@@ -72,29 +78,52 @@
   <p>1枚150円</p>
 </div>
 
+<div id="rankRoom" class="room">
+  <h3>オンラインランキング</h3>
+  <button onclick="pushRanking()">ランキング送信</button>
+  <button onclick="loadRanking()">ランキング更新</button>
+  <table id="rankTable">
+    <thead>
+      <tr><th>順位</th><th>名前</th><th>クッキー</th><th>お金</th></tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</div>
+
 <script>
+  const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a5cb0f6f5f4af5e29a39a32";
+  const JSONBIN_KEY= "$2a$10$OGWqvHLVeUltK2CX/W5pB.j8qVZX4p0UCvHAX8UOsu7JZHmwp1ooW";
+
+  let playerName="";
   let cookies=0;
   let money=0;
   let makeRobots=0;
   let sellRobots=0;
+  let makeLevel=1;
   let requestCount=0;
   let currentSellRequest=0;
   let customerTimer=null;
   const pricePerCookie=150;
 
+  const nameInput=document.getElementById("playerName");
   const cookiesEl=document.getElementById("cookies");
   const moneyEl=document.getElementById("money");
   const makeRobotsEl=document.getElementById("makeRobots");
   const sellRobotsEl=document.getElementById("sellRobots");
+  const makeLevelEl=document.getElementById("makeLevel");
   const requestEl=document.getElementById("requestCount");
   const sellCustomer=document.getElementById("sellCustomer");
   const sellButtons=document.getElementById("sellButtons");
+  const rankBody=document.getElementById("rankBody");
+
+  nameInput.addEventListener("input",()=>{playerName=nameInput.value;autoSave();});
 
   function update(){
-    cookiesEl.textContent=cookies;
-    moneyEl.textContent=money;
+    cookiesEl.textContent=Math.floor(cookies);
+    moneyEl.textContent=Math.floor(money);
     makeRobotsEl.textContent=makeRobots;
     sellRobotsEl.textContent=sellRobots;
+    makeLevelEl.textContent=makeLevel;
     requestEl.textContent=requestCount;
   }
 
@@ -106,6 +135,7 @@
   document.getElementById("cookieBtn").onclick=()=>{
     cookies++;
     update();
+    autoSave();
   };
 
   function buyMakeRobot(){
@@ -114,6 +144,16 @@
       makeRobots++;
       update();
       renderMakeRobots();
+      autoSave();
+    }
+  }
+
+  function levelUpMakeRobot(){
+    if(makeLevel<10 && money>=11000){
+      money-=11000;
+      makeLevel++;
+      update();
+      autoSave();
     }
   }
 
@@ -123,6 +163,7 @@
       sellRobots++;
       update();
       renderSellRobots();
+      autoSave();
     }
   }
 
@@ -140,31 +181,35 @@
 
   function renderRobotWork(){
     const v=document.getElementById("robotWorkView");
-    v.innerHTML="<p>製造ロボット："+makeRobots+"体</p><p>販売ロボット："+sellRobots+"体</p>";
+    v.innerHTML="<p>製造ロボット："+makeRobots+"体（Lv"+makeLevel+"）</p><p>販売ロボット："+sellRobots+"体</p>";
   }
 
   function offlineWork(){
     const last=localStorage.getItem("lastTime");
     if(!last)return;
     const now=Date.now();
-    const diff=Math.floor((now-last)/1000);
+    const diff=Math.floor((now-last)/100);
     if(diff>0){
-      cookies+=makeRobots*diff;
-      money+=sellRobots*diff*pricePerCookie;
+      const speed=makeLevel===10?0.1:1/makeLevel;
+      cookies+=makeRobots*diff*speed;
+      money+=sellRobots*diff*(pricePerCookie/10);
     }
   }
 
   setInterval(()=>{
     if(makeRobots>0){
-      cookies+=makeRobots;
+      const speed=makeLevel===10?0.1:1/makeLevel;
+      cookies+=makeRobots*speed;
       update();
       renderRobotWork();
+      autoSave();
     }
-  },1000);
+  },100);
 
   function newRequest(){
     requestCount=Math.floor(Math.random()*(1000-10+1))+10;
     update();
+    autoSave();
   }
 
   function acceptRequest(){
@@ -174,11 +219,13 @@
       money+=requestCount*pricePerCookie;
       requestCount=0;
       update();
+      autoSave();
     }else{
       cookies=0;
       money=0;
       requestCount=0;
       update();
+      autoSave();
     }
   }
 
@@ -188,22 +235,30 @@
     money=Math.max(0,money-requestCount*10);
     requestCount=0;
     update();
+    autoSave();
   }
 
   function saveGame(){
-    const d={cookies,money,makeRobots,sellRobots};
+    const d={playerName,cookies,money,makeRobots,sellRobots,makeLevel};
     localStorage.setItem("cookieFactorySave",JSON.stringify(d));
     localStorage.setItem("lastTime",Date.now());
+  }
+
+  function autoSave(){
+    saveGame();
   }
 
   function loadGame(){
     const d=localStorage.getItem("cookieFactorySave");
     if(!d)return;
     const o=JSON.parse(d);
+    playerName=o.playerName||"";
     cookies=o.cookies||0;
     money=o.money||0;
     makeRobots=o.makeRobots||0;
     sellRobots=o.sellRobots||0;
+    makeLevel=o.makeLevel||1;
+    nameInput.value=playerName;
     offlineWork();
     update();
     renderMakeRobots();
@@ -211,53 +266,53 @@
     renderRobotWork();
   }
 
-  setInterval(()=>{
-    if(cookies>=10&&Math.random()<0.2){
-      currentSellRequest=Math.floor(Math.random()*(200-10+1))+10;
-      sellCustomer.innerHTML="<div class='customer'>🧍 クッキー"+currentSellRequest+"枚ください</div>";
-      sellButtons.innerHTML="<button id='yesBtn' onclick='sellYes()'>YES</button><button id='noBtn' onclick='sellNo()'>NO</button>";
-      if(customerTimer)clearTimeout(customerTimer);
-      customerTimer=setTimeout(()=>{
-        sellCustomer.innerHTML="";
-        sellButtons.innerHTML="";
-      },5000);
-    }
-  },3000);
-
-  function sellYes(){
-    if(cookies>=currentSellRequest){
-      cookies-=currentSellRequest;
-      money+=currentSellRequest*pricePerCookie;
-      sellCustomer.innerHTML="";
-      sellButtons.innerHTML="";
-      update();
-    }else{
-      const r=Math.random();
-      if(r<0.3){
-        alert("怒られてゲームオーバー");
-        cookies=0;
-        money=0;
-      }else{
-        alert("いいよいいよ、また来るね");
+  async function pushRanking(){
+    if(!playerName)return;
+    const record={name:playerName,cookies:Math.floor(cookies),money:Math.floor(money)};
+    try{
+      const res=await fetch(JSONBIN_URL,{
+        method:"GET",
+        headers:{"X-Master-Key":JSONBIN_KEY}
+      });
+      let data=[];
+      if(res.ok){
+        const json=await res.json();
+        data=json.record||[];
       }
-      sellCustomer.innerHTML="";
-      sellButtons.innerHTML="";
-      update();
-    }
+      data.push(record);
+      data.sort((a,b)=>{
+        if(b.money!==a.money)return b.money-a.money;
+        return b.cookies-a.cookies;
+      });
+      await fetch(JSONBIN_URL,{
+        method:"PUT",
+        headers:{
+          "Content-Type":"application/json",
+          "X-Master-Key":JSONBIN_KEY
+        },
+        body:JSON.stringify(data)
+      });
+      loadRanking();
+    }catch(e){}
   }
 
-  function sellNo(){
-    const r=Math.random();
-    if(r<0.1){
-      money=0;
-      alert("お金全部取られた");
-    }else{
-      alert("またこんど来るね");
-    }
-    sellCustomer.innerHTML="";
-    sellButtons.innerHTML="";
-    update();
+  async function loadRanking(){
+    try{
+      const res=await fetch(JSONBIN_URL,{
+        method:"GET",
+        headers:{"X-Master-Key":JSONBIN_KEY}
+      });
+      if(!res.ok)return;
+      const json=await res.json();
+      const data=json.record||[];
+      rankBody.innerHTML="";
+      data.forEach((r,i)=>{
+        rankBody.innerHTML+=`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.cookies}</td><td>${r.money}</td></tr>`;
+      });
+    }catch(e){}
   }
+
+  window.addEventListener("beforeunload",()=>{autoSave();});
 
   loadGame();
   update();
