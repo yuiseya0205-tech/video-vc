@@ -8,13 +8,10 @@
   body{text-align:center;font-family:sans-serif;background:#f7e9c8;}
   #menu button,#saveBtn,#loadBtn{padding:clamp(8px,1.5vw,16px) clamp(12px,2vw,24px);margin:5px;background:#ffb347;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;font-size:clamp(12px,2vw,20px);}
   #menu button:hover,#saveBtn:hover,#loadBtn:hover{background:#ff9a00;}
-  .room{display:none;margin-top:20px;padding:20px;background:#fff;border-radius:12px;width:min(90%,900px);margin-left:auto;margin-right:auto;position:relative;}
-  #cookieBtn{font-size:clamp(60px,12vw,120px);cursor:pointer;transition:none;}
+  .room{display:none;margin-top:20px;padding:20px;background:#fff;border-radius:12px;width:min(90%,900px);margin-left:auto;margin-right:auto;}
+  #cookieBtn{font-size:clamp(60px,12vw,120px);cursor:pointer;}
   #cookieBtn:active{transform:none;}
-  .robot{font-size:clamp(40px,8vw,70px);margin:10px;position:absolute;}
-  #makeRobotView .robot{left:10px;}
-  #sellRobotView .robot{right:10px;}
-  #robotWorkView .robot{display:inline-block;position:static;margin:10px;}
+  .robot{font-size:clamp(40px,8vw,70px);margin:10px;}
   .customer{font-size:clamp(24px,5vw,40px);margin:10px;}
   #yesBtn,#noBtn{padding:clamp(8px,1.5vw,16px) clamp(12px,2vw,24px);margin:5px;background:#4caf50;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;font-size:clamp(12px,2vw,20px);}
   #noBtn{background:#f44336;}
@@ -132,20 +129,18 @@
   function renderMakeRobots(){
     const v=document.getElementById("makeRobotView");
     v.innerHTML="";
-    for(let i=0;i<makeRobots;i++)v.innerHTML+="<div class='robot' style='top:"+(120+i*70)+"px;'>🤖🍪</div>";
+    for(let i=0;i<makeRobots;i++)v.innerHTML+="<div class='robot'>🤖🍪</div>";
   }
 
   function renderSellRobots(){
     const v=document.getElementById("sellRobotView");
     v.innerHTML="";
-    for(let i=0;i<sellRobots;i++)v.innerHTML+="<div class='robot' style='top:"+(120+i*70)+"px;'>🤖💰</div>";
+    for(let i=0;i<sellRobots;i++)v.innerHTML+="<div class='robot'>🤖💰</div>";
   }
 
   function renderRobotWork(){
     const v=document.getElementById("robotWorkView");
-    v.innerHTML="";
-    for(let i=0;i<makeRobots;i++)v.innerHTML+="<div class='robot'>🤖🍪</div>";
-    for(let i=0;i<sellRobots;i++)v.innerHTML+="<div class='robot'>🤖💰</div>";
+    v.innerHTML="<p>製造ロボット："+makeRobots+"体</p><p>販売ロボット："+sellRobots+"体</p>";
   }
 
   function offlineWork(){
