@@ -165,6 +165,10 @@ autoSave();
 }
 },1000);
 
+setInterval(()=>{
+localStorage.setItem("lastTime",Date.now());
+},1000);
+
 function newRequest(){
 requestCount=Math.floor(Math.random()*(1000-10+1))+10;
 update();
@@ -234,8 +238,6 @@ money+=sellRobots*earn*diffSec;
 
 update();
 }
-
-window.addEventListener("beforeunload",()=>{autoSave();});
 
 loadGame();
 update();
